@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI Tattoo Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0e14;
+      --panel-bg: rgba(255, 255, 255, 0.03);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --primary-gradient: linear-gradient(135deg, #8b5cf6, #3b82f6);
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .glass-panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .gradient-text {
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .btn-primary {
+      background: var(--primary-gradient);
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .tab-btn {
+      transition: all 0.3s ease;
+    }
+
+    .tab-active {
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      color: white;
+    }
+
+    .tab-inactive {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+    }
+
+    .tab-inactive:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .input-glass {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--panel-border);
+      color: white;
+      transition: border-color 0.3s ease;
+    }
+
+    .input-glass:focus {
+      outline: none;
+      border-color: #8b5cf6;
+    }
+
+    /* Modal Styles */
+    #settingsModal {
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background: #111827;
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      border-top: 3px solid #8b5cf6;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+
+<!-- Header -->
+<header class="flex justify-between items-center mb-6 md:mb-8 max-w-6xl mx-auto w-full">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+      <i class="fa-solid fa-wand-magic-sparkles text-white"></i>
+    </div>
+    <div>
+      <h1 class="text-xl md:text-2xl font-bold tracking-tight">AI <span class="gradient-text">Tattoo Studio</span></h1>
+      <p class="text-xs md:text-sm text-gray-400 mt-0.5">创意由你，艺术由AI呈现</p>
+    </div>
+  </div>
+  <button id="openSettingsBtn" class="glass-panel px-4 py-2 flex items-center gap-2 text-sm hover:bg-white/5 transition-colors">
+    <i class="fa-solid fa-gear text-gray-400"></i>
+    <span class="hidden md:inline">设置</span>
+  </button>
+</header>
+
+<!-- Main Content -->
+<main class="max-w-6xl mx-auto w-full flex-1 flex flex-col md:flex-row gap-6">
+
+  <!-- Left Panel: Controls -->
+  <div class="w-full md:w-5/12 lg:w-1/3 flex flex-col gap-4">
+
+    <!-- Tabs -->
+    <div class="flex gap-2">
+      <button id="tabTxt2Img" class="tab-btn tab-active flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-medium">
+        <i class="fa-solid fa-pen-nib"></i>
+        文生图
+      </button>
+      <button id="tabImg2Img" class="tab-btn tab-inactive flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-medium">
+        <i class="fa-regular fa-image"></i>
+        图生图
+      </button>
+    </div>
+
+    <!-- Input Area -->
+    <div class="glass-panel p-5 flex-1 flex flex-col">
+      <h2 class="text-lg font-semibold mb-4 text-gray-200">提示词</h2>
+
+      <!-- Image Upload (Hidden by default) -->
+      <div id="imageUploadArea" class="hidden mb-4 border-2 border-dashed border-gray-600 rounded-xl p-4 text-center cursor-pointer hover:border-purple-500 transition-colors bg-black/20">
+        <input type="file" id="referenceImage" class="hidden" accept="image/*">
+        <i class="fa-solid fa-cloud-arrow-up text-2xl text-gray-400 mb-2"></i>
+        <p class="text-sm text-gray-400">点击或拖拽上传参考图</p>
+        <img id="previewReference" class="hidden mt-2 rounded-lg max-h-32 mx-auto object-cover" />
+      </div>
+
+      <div class="relative flex-1 flex flex-col">
+                    <textarea id="promptInput"
+                              class="input-glass w-full flex-1 min-h-[160px] md:min-h-[200px] rounded-xl p-4 text-sm resize-none"
+                              placeholder="描述你想要的文身图案，例如：一只展翅的凤凰，线条风格，黑色..."></textarea>
+        <div class="absolute bottom-3 right-4 text-xs text-gray-500">
+          <span id="charCount">0</span> / 500
+        </div>
+      </div>
+
+      <!-- Generation Options -->
+      <div class="mt-5 space-y-4">
+        <!-- Aspect Ratio -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-2">图片比例</label>
+          <div class="flex gap-1.5 bg-black/20 p-1 rounded-lg border border-gray-800" id="ratioSelector">
+            <button data-value="1:1" class="ratio-btn flex-1 py-1.5 text-xs rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 transition-all font-medium">1:1</button>
+            <button data-value="16:9" class="ratio-btn flex-1 py-1.5 text-xs rounded-md text-gray-400 border border-transparent hover:text-gray-200 hover:bg-white/5 transition-all">16:9</button>
+            <button data-value="9:16" class="ratio-btn flex-1 py-1.5 text-xs rounded-md text-gray-400 border border-transparent hover:text-gray-200 hover:bg-white/5 transition-all">9:16</button>
+            <button data-value="4:3" class="ratio-btn flex-1 py-1.5 text-xs rounded-md text-gray-400 border border-transparent hover:text-gray-200 hover:bg-white/5 transition-all">4:3</button>
+            <button data-value="3:4" class="ratio-btn flex-1 py-1.5 text-xs rounded-md text-gray-400 border border-transparent hover:text-gray-200 hover:bg-white/5 transition-all">3:4</button>
+          </div>
+        </div>
+        
+        <!-- Resolution -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-2">分辨率</label>
+          <div class="flex gap-1.5 bg-black/20 p-1 rounded-lg border border-gray-800" id="qualitySelector">
+            <button data-value="2k" class="quality-btn flex-1 py-1.5 text-xs rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 transition-all font-medium">2K</button>
+            <button data-value="4k" class="quality-btn flex-1 py-1.5 text-xs rounded-md text-gray-400 border border-transparent hover:text-gray-200 hover:bg-white/5 transition-all">4K</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 flex items-start gap-2 text-xs text-gray-400">
+        <i class="fa-regular fa-lightbulb mt-0.5 text-yellow-500/70"></i>
+        <p>提示：描述越详细，生成效果越好哦~</p>
+      </div>
+
+      <button id="generateBtn" class="btn-primary w-full py-3.5 rounded-xl mt-6 font-medium text-white shadow-lg flex items-center justify-center gap-2">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        生成图像
+      </button>
+    </div>
+
+    <div class="text-center mt-2 flex items-center justify-center gap-2 text-xs text-gray-500">
+      <i class="fa-solid fa-lock text-gray-600"></i>
+      仅保存在本地浏览器中
+    </div>
+  </div>
+
+  <!-- Right Panel: Result -->
+  <div class="glass-panel w-full md:w-7/12 lg:w-2/3 min-h-[350px] md:min-h-[500px] p-6 flex flex-col relative overflow-hidden mt-4 md:mt-0">
+    <div class="flex justify-between items-center mb-4 z-10 relative">
+      <h2 class="text-lg font-semibold text-gray-200">生成结果</h2>
+      <button id="downloadBtn" class="hidden bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-2 backdrop-blur-sm">
+        <i class="fa-solid fa-download"></i>
+        保存
+      </button>
+    </div>
+
+    <!-- Display Area -->
+    <div id="resultArea" class="flex-1 flex flex-col items-center justify-center text-center relative z-10 bg-black/20 rounded-xl border border-gray-800 p-2">
+
+      <!-- Initial State -->
+      <div id="stateInitial" class="flex flex-col items-center justify-center p-4">
+        <div class="w-20 h-20 bg-gray-800/50 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+          <i class="fa-regular fa-image text-4xl text-gray-600"></i>
+        </div>
+        <p class="text-gray-400 font-medium mb-2">生成的图像将显示在这里</p>
+        <p class="text-xs text-gray-600">快去输入你的创意吧 <i class="fa-solid fa-sparkles text-purple-500/50"></i></p>
+      </div>
+
+      <!-- Loading State -->
+      <div id="stateLoading" class="hidden flex-col items-center justify-center">
+        <div class="spinner mb-6"></div>
+        <p class="text-gray-300 font-medium animate-pulse">AI 正在绘制中，请稍候...</p>
+      </div>
+
+      <!-- Result State -->
+      <div id="stateResult" class="hidden w-full h-full flex items-center justify-center relative group">
+        <img id="generatedImage" src="" alt="Generated Tattoo" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
+      </div>
+    </div>
+
+    <!-- Decorative background glow -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-600/10 rounded-full blur-[100px] pointer-events-none z-0"></div>
+  </div>
+</main>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+  <div class="modal-content w-full max-w-md rounded-2xl p-6 relative animate-[fadeIn_0.2s_ease-out]">
+    <button id="closeSettingsBtn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors w-8 h-8 flex items-center justify-center">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+
+    <h2 class="text-xl font-bold mb-6">设置</h2>
+
+    <div class="space-y-5">
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-cube text-gray-400"></i> 模型名称映射 (Model ID)
+        </label>
+        <input type="text" id="modelId" class="input-glass w-full px-4 py-2.5 rounded-xl text-sm" value="gpt-image-2" placeholder="例如: gpt-image-2">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">API URL</label>
+        <input type="text" id="apiUrl" class="input-glass w-full px-4 py-2.5 rounded-xl text-sm" placeholder="例如: https://api.1xm.ai/v1" value="https://api.1xm.ai/v1">
+        <p class="text-xs text-gray-500 mt-1.5">输入你的 API 接口地址</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">API Key</label>
+        <div class="relative">
+          <input type="password" id="apiKey" class="input-glass w-full px-4 py-2.5 rounded-xl text-sm pr-10" placeholder="sk-...">
+          <button id="toggleKeyVisibility" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 w-6 h-6 flex items-center justify-center">
+            <i class="fa-regular fa-eye"></i>
+          </button>
+        </div>
+        <p class="text-xs text-gray-500 mt-1.5">输入你的 API Key</p>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-8">
+      <button id="cancelSettingsBtn" class="flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-medium transition-colors">
+        取消
+      </button>
+      <button id="saveSettingsBtn" class="btn-primary flex-1 py-2.5 rounded-xl text-white font-medium">
+        保存
+      </button>
+    </div>
+
+    <!-- Success Toast (Hidden) -->
+    <div id="saveToast" class="hidden absolute bottom-[-40px] left-1/2 -translate-x-1/2 bg-green-500/20 text-green-400 border border-green-500/30 px-4 py-2 rounded-lg text-sm flex items-center gap-2 whitespace-nowrap">
+      <i class="fa-solid fa-circle-check"></i>
+      设置已保存在浏览器本地
+    </div>
+  </div>
+</div>
+
+<script>
+  // DOM Elements
+  const promptInput = document.getElementById('promptInput');
+  const charCount = document.getElementById('charCount');
+  const tabTxt2Img = document.getElementById('tabTxt2Img');
+  const tabImg2Img = document.getElementById('tabImg2Img');
+  const imageUploadArea = document.getElementById('imageUploadArea');
+  const generateBtn = document.getElementById('generateBtn');
+
+  const stateInitial = document.getElementById('stateInitial');
+  const stateLoading = document.getElementById('stateLoading');
+  const stateResult = document.getElementById('stateResult');
+  const generatedImage = document.getElementById('generatedImage');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  const settingsModal = document.getElementById('settingsModal');
+  const openSettingsBtn = document.getElementById('openSettingsBtn');
+  const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+  const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
+  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  const modelIdInput = document.getElementById('modelId');
+  const apiUrlInput = document.getElementById('apiUrl');
+  const apiKeyInput = document.getElementById('apiKey');
+  const toggleKeyVisibility = document.getElementById('toggleKeyVisibility');
+  const saveToast = document.getElementById('saveToast');
+
+  const referenceImageInput = document.getElementById('referenceImage');
+  const previewReference = document.getElementById('previewReference');
+
+  let currentMode = 'txt2img';
+
+  // Initialize from LocalStorage
+  function initSettings() {
+    const savedUrl = localStorage.getItem('tattooApiUrl');
+    const savedKey = localStorage.getItem('tattooApiKey');
+    const savedModelId = localStorage.getItem('tattooModelId');
+    if (savedUrl) apiUrlInput.value = savedUrl;
+    if (savedKey) apiKeyInput.value = savedKey;
+    if (savedModelId) modelIdInput.value = savedModelId;
+  }
+  initSettings();
+
+  // Character Counter
+  promptInput.addEventListener('input', (e) => {
+    const count = e.target.value.length;
+    if (count > 500) {
+      e.target.value = e.target.value.substring(0, 500);
+    }
+    charCount.textContent = Math.min(count, 500);
+  });
+
+  // Tabs Switching
+  function switchTab(mode) {
+    currentMode = mode;
+    if (mode === 'txt2img') {
+      tabTxt2Img.className = 'tab-btn tab-active flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-medium';
+      tabImg2Img.className = 'tab-btn tab-inactive flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-medium';
+      imageUploadArea.classList.add('hidden');
+    } else {
+      tabImg2Img.className = 'tab-btn tab-active flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-medium';
+      tabTxt2Img.className = 'tab-btn tab-inactive flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-medium';
+      imageUploadArea.classList.remove('hidden');
+    }
+  }
+
+  tabTxt2Img.addEventListener('click', () => switchTab('txt2img'));
+  tabImg2Img.addEventListener('click', () => switchTab('img2img'));
+
+  // Options Selection Logic
+  let currentRatio = '1:1';
+  let currentQuality = '2k';
+  
+  const ratioBtns = document.querySelectorAll('.ratio-btn');
+  const qualityBtns = document.querySelectorAll('.quality-btn');
+
+  function updateOptionButtons(btns, currentValue) {
+    btns.forEach(btn => {
+      if (btn.dataset.value === currentValue) {
+        btn.classList.add('bg-purple-500/20', 'text-purple-300', 'border-purple-500/30', 'font-medium');
+        btn.classList.remove('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:bg-white/5');
+      } else {
+        btn.classList.remove('bg-purple-500/20', 'text-purple-300', 'border-purple-500/30', 'font-medium');
+        btn.classList.add('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:bg-white/5');
+      }
+    });
+  }
+
+  ratioBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentRatio = btn.dataset.value;
+      updateOptionButtons(ratioBtns, currentRatio);
+    });
+  });
+
+  qualityBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentQuality = btn.dataset.value;
+      updateOptionButtons(qualityBtns, currentQuality);
+    });
+  });
+
+  // Image Upload Handle
+  imageUploadArea.addEventListener('click', () => {
+    referenceImageInput.click();
+  });
+
+  referenceImageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewReference.src = e.target.result;
+        previewReference.classList.remove('hidden');
+        imageUploadArea.querySelector('i').classList.add('hidden');
+        imageUploadArea.querySelector('p').classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Settings Modal
+  function openSettings() {
+    settingsModal.classList.remove('hidden');
+  }
+
+  function closeSettings() {
+    settingsModal.classList.add('hidden');
+    saveToast.classList.add('hidden');
+  }
+
+  openSettingsBtn.addEventListener('click', openSettings);
+  closeSettingsBtn.addEventListener('click', closeSettings);
+  cancelSettingsBtn.addEventListener('click', closeSettings);
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) closeSettings();
+  });
+
+  toggleKeyVisibility.addEventListener('click', () => {
+    const type = apiKeyInput.getAttribute('type') === 'password' ? 'text' : 'password';
+    apiKeyInput.setAttribute('type', type);
+    toggleKeyVisibility.innerHTML = type === 'password' ? '<i class="fa-regular fa-eye"></i>' : '<i class="fa-regular fa-eye-slash"></i>';
+  });
+
+  saveSettingsBtn.addEventListener('click', () => {
+    localStorage.setItem('tattooApiUrl', apiUrlInput.value);
+    localStorage.setItem('tattooApiKey', apiKeyInput.value);
+    localStorage.setItem('tattooModelId', modelIdInput.value);
+
+    saveToast.classList.remove('hidden');
+    saveToast.classList.add('animate-[slideUp_0.3s_ease-out]');
+
+    setTimeout(() => {
+      closeSettings();
+    }, 1500);
+  });
+
+  // API Generation Request
+  generateBtn.addEventListener('click', async () => {
+    const prompt = promptInput.value.trim();
+    if (!prompt) {
+      alert('请输入提示词');
+      return;
+    }
+
+    const apiUrl = localStorage.getItem('tattooApiUrl') || 'https://api.1xm.ai/v1';
+    const apiKey = localStorage.getItem('tattooApiKey');
+    const modelId = localStorage.getItem('tattooModelId') || 'gpt-image-2';
+
+    if (!apiKey) {
+      alert('请先点击右上角设置，配置您的 API Key');
+      openSettings();
+      return;
+    }
+
+    // 如果是图生图模式，检查是否上传了图片
+    let base64Image = null;
+    if (currentMode === 'img2img') {
+      if (!previewReference.src || previewReference.classList.contains('hidden') || !previewReference.src.startsWith('data:')) {
+        alert('请先点击上传一张参考图片！');
+        return;
+      }
+      base64Image = previewReference.src;
+    }
+
+    // Simulate UI changes
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 生成中...';
+    generateBtn.classList.add('opacity-70', 'cursor-not-allowed');
+
+    stateInitial.classList.add('hidden');
+    stateResult.classList.add('hidden');
+    downloadBtn.classList.add('hidden');
+    stateLoading.classList.remove('hidden');
+    stateLoading.classList.add('flex');
+
+    // 统一走 chat/completions 接口
+    const basePath = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    const endpoint = basePath + '/chat/completions';
+    
+    // 为了支持自定义画质和比例，我们将它们追加到提示词中
+    const fullPrompt = `请生成图像：${prompt}\n[附加要求] 分辨率: ${currentQuality}, 比例: ${currentRatio}`;
+
+    let messages = [];
+
+    if (currentMode === 'img2img' && base64Image) {
+      // 图生图：使用类似 gpt-4-vision-preview 的格式
+      messages = [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: fullPrompt },
+            { type: "image_url", image_url: { url: base64Image } }
+          ]
+        }
+      ];
+    } else {
+      // 文生图：纯文本格式
+      messages = [
+        {
+          role: "user",
+          content: fullPrompt
+        }
+      ];
+    }
+
+    const payload = {
+      model: modelId,
+      messages: messages
+    };
+
+    let fetchOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(payload)
+    };
+
+    let curlCommand = `curl -X POST "${endpoint}" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${apiKey}" \\
+  -d '${JSON.stringify(payload)}'`;
+
+    console.log("=== 发送的请求 CURL ===");
+    console.log(curlCommand);
+    console.log("=====================");
+
+    try {
+      const response = await fetch(endpoint, fetchOptions);
+
+      const contentType = response.headers.get("content-type");
+      const isJson = contentType && contentType.includes("application/json");
+
+      if (!response.ok) {
+        let errMsg = `请求失败 (${response.status})`;
+        try {
+          if (isJson) {
+            const errData = await response.json();
+            if (errData.error?.message) errMsg = errData.error.message;
+          } else {
+            const text = await response.text();
+            if (text.trim().startsWith('<')) {
+              errMsg = `请求失败 (${response.status}): 接口返回了网页而不是数据，请检查 API URL 是否填写了正确的接口地址。`;
+            } else {
+              errMsg += ` - ${text.substring(0, 100)}`;
+            }
+          }
+        } catch(e) {}
+        throw new Error(errMsg);
+      }
+
+      if (!isJson) {
+        const text = await response.text();
+        throw new Error(`接口返回了非预期的格式 (不是JSON)。这通常是因为 API URL 填错了，请点击设置检查您的 API 地址。\n返回片段: ${text.substring(0, 50)}...`);
+      }
+
+      const data = await response.json();
+      
+      // 打印完整的接口返回体，方便调试
+      console.log("=== 接口返回的 JSON 数据 ===");
+      console.log(data);
+      console.log("============================");
+      
+      // 尝试解析各种可能的返回格式
+      // 提取策略流水线（多重适配降级机制）
+      // 这里的逻辑：试第一种，不行试第二种，一直试到底
+      let imageUrl = null;
+
+      const extractionStrategies = [
+        // 策略 1: 解析 chat/completions 里的 content (支持 Markdown / URL / 嵌套 JSON)
+        (res) => {
+          if (!res.choices || !res.choices[0]?.message?.content) return null;
+          const content = res.choices[0].message.content;
+          
+          // 1.1 匹配 Markdown 图片 ![alt](url) 或 ![alt](data:image...)
+          const mdMatch = content.match(/!\[.*?\]\((data:image\/[^\s\)]+|https?:\/\/[^\s\)]+)\)/);
+          if (mdMatch) return mdMatch[1];
+          
+          // 1.2 匹配纯 URL 或纯 Data URI (整个 content 就是个链接)
+          const trimmed = content.trim();
+          if (trimmed.startsWith('http') || trimmed.startsWith('data:image/')) return trimmed;
+          
+          // 1.3 从混乱的文本中暴力提取第一条链接
+          const linkMatch = content.match(/(data:image\/[^\s\)]+|https?:\/\/[^\s\)]+)/);
+          if (linkMatch) return linkMatch[1];
+          
+          // 1.4 如果 content 里面包了一层 JSON 字符串
+          try {
+            const innerData = JSON.parse(content);
+            if (innerData.b64_json) return `data:image/${innerData.output_format || 'png'};base64,${innerData.b64_json}`;
+            if (innerData.url) return innerData.url;
+            if (innerData.image_url) return innerData.image_url;
+          } catch(e) {}
+          
+          return null;
+        },
+
+        // 策略 2: 兼容标准 OpenAI images/generations 格式
+        (res) => {
+          if (!res.data || !Array.isArray(res.data) || res.data.length === 0) return null;
+          if (res.data[0].url) return res.data[0].url;
+          if (res.data[0].b64_json) return `data:image/${res.output_format || 'png'};base64,${res.data[0].b64_json}`;
+          return null;
+        },
+
+        // 策略 3: 兼容第三方精简接口返回 (直接返回 url: "...")
+        (res) => res.url || null,
+        
+        // 策略 4: 兼容第三方精简接口返回 (直接返回 image_url: "...")
+        (res) => res.image_url || null,
+        
+        // 策略 5: 兼容另外一些特定代理的格式
+        (res) => {
+          if (typeof res.result === 'string' && (res.result.startsWith('http') || res.result.startsWith('data:image/'))) {
+            return res.result;
+          }
+          return null;
+        }
+      ];
+
+      // 依次执行所有提取策略，中一个就停
+      for (const strategy of extractionStrategies) {
+        imageUrl = strategy(data);
+        if (imageUrl) break;
+      }
+
+      if (!imageUrl) {
+        throw new Error(`所有图片解析方案均失败！接口返回了完全未知的格式。请按 F12 检查控制台输出的数据结构。`);
+      }
+
+      generatedImage.src = imageUrl;
+
+      generatedImage.onload = () => {
+        stateLoading.classList.add('hidden');
+        stateLoading.classList.remove('flex');
+        stateResult.classList.remove('hidden');
+        downloadBtn.classList.remove('hidden');
+
+        // Reset Button
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 生成图像';
+        generateBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+      };
+      
+      generatedImage.onerror = () => {
+        throw new Error('生成的图片加载失败');
+      };
+
+    } catch (error) {
+      console.error('API Error:', error);
+      alert('生成出错: ' + error.message);
+      
+      // Revert UI on error
+      stateLoading.classList.add('hidden');
+      stateLoading.classList.remove('flex');
+      stateInitial.classList.remove('hidden');
+      
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 生成图像';
+      generateBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+    }
+  });
+
+  // Download Image Handle
+  downloadBtn.addEventListener('click', async () => {
+    if (!generatedImage.src) return;
+
+    try {
+      const response = await fetch(generatedImage.src);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tattoo_design_${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed:', err);
+      window.open(generatedImage.src, '_blank');
+    }
+  });
+</script>
+</body>
+</html>
